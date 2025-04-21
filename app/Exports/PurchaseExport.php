@@ -27,18 +27,18 @@ class PurchaseExport implements FromCollection, WithHeadings, WithMapping, WithT
     public function headings(): array
     {
         return [
-            'ID',                        // Purchase ID
-            'Nama Pelanggan',             // Customer's Name
-            'Nomor HP Pelanggan',         // Customer's Phone Number
-            'Poin Pelanggan',             // Customer's Points
-            'Tanggal Penjualan',          // Sale Date
-            'Total Harga',                // Total Price
-            'Produk',                     // Product Name
-            'Dibuat Oleh',                // Created by (User)
+            'ID',
+            'Nama Pelanggan',
+            'Nomor HP Pelanggan',
+            'Poin Pelanggan',
+            'Tanggal Penjualan',
+            'Total Harga',
+            'Produk',
+            'Dibuat Oleh',
         ];
     }
 
-    // Mapping the data to be displayed in the Excel file
+
     public function map($purchase): array
     {
         $rows = [];
@@ -60,13 +60,13 @@ class PurchaseExport implements FromCollection, WithHeadings, WithMapping, WithT
         return $rows;
     }
 
-    // Defining the title for the Excel sheet
+
     public function title(): string
     {
         return 'Data Penjualan'; // Sheet Title
     }
 
-    // Defining the column formatting for specific columns
+    
     public function columnFormats(): array
     {
         return [

@@ -14,11 +14,29 @@ use App\Exports\PembelianExport;
 
 class PurchaseController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $purchases = Purchase::with('user', 'member')->orderBy('created_at', 'desc')->paginate(10);
-        return view('pembelian.index', compact('purchases'));
+        $search = $request->input('search');
+
+        $query = Purchase::with(['user', 'member']);
+
+        if ($search) {
+            $query->whereHas('user', function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%');
+            })
+            ->orWhereHas('member', function ($q) use ($search) {
+                $q->where('name', 'like', '%' . $search . '%')
+                   ->orWhere('no_phone', 'like', '%' . $search . '%');
+            })
+            ->orWhere('id', 'like', '%' . $search . '%'); // pakai ID transaksi sebagai alternatif
+        }
+
+        $purchases = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+
+        return view('pembelian.index', compact('purchases', 'search'));
     }
+
+
 
     public function create()
     {
@@ -212,7 +230,7 @@ class PurchaseController extends Controller
         }
         session([
             'purchase_data' => [
-                'id' => $purchase->id, 
+                'id' => $purchase->id,
                 'member' => $purchase->member,
                 'products' => $purchase->products,
                 'total_price' => $purchase->total_price,

@@ -34,23 +34,19 @@
                 </tr>
             </thead>
             <tbody>
-                <tbody>
-                    @foreach ($purchaseData['products'] as $product)
-                        @php
-                            // Cari produk yang sesuai berdasarkan product_id dari session 'selected_products'
-                            $selectedProduct = collect($productItems)->firstWhere('product_id', $product->id);
-                            $quantity = $selectedProduct ? $selectedProduct['jumlah'] : 0; // default 0 jika tidak ditemukan
-                            $productPrice = $selectedProduct ? $selectedProduct['product_price'] : 0; // Ambil harga dari session, default 0
-                        @endphp
-                        <tr>
-                            <td>{{ $product->name }}</td>
-                            <td>{{ $quantity }}</td>
-                            <td>Rp. {{ number_format($productPrice, 0, ',', '.') }}</td> <!-- Tampilkan product_price dari session -->
-                            <td>Rp. {{ number_format($productPrice * $quantity, 0, ',', '.') }}</td>
-                        </tr>
-                    @endforeach
-                </tbody>
-
+                @foreach ($purchaseData['products'] as $product)
+                    @php
+                        $selectedProduct = collect($productItems)->firstWhere('product_id', $product->id);
+                        $quantity = $selectedProduct['jumlah'] ?? 0;
+                        $productPrice = $selectedProduct['product_price'] ?? 0;
+                    @endphp
+                    <tr>
+                        <td>{{ $product->name }}</td>
+                        <td>{{ $quantity }}</td>
+                        <td>Rp. {{ number_format($productPrice, 0, ',', '.') }}</td>
+                        <td>Rp. {{ number_format($productPrice * $quantity, 0, ',', '.') }}</td>
+                    </tr>
+                @endforeach
             </tbody>
         </table>
 
@@ -59,16 +55,24 @@
                 <th>Total Harga</th>
                 <td class="text-right">Rp. {{ number_format($purchaseData['total_price'], 0, ',', '.') }}</td>
             </tr>
+
+            {{-- Tampilkan poin hanya jika member --}}
+            @if ($purchaseData['member'])
+                @if ($purchaseData['use_points'] > 0)
+                    <tr>
+                        <th>Poin Digunakan</th>
+                        <td class="text-right">{{ $purchaseData['use_points'] }}</td>
+                    </tr>
+                @endif
+
+                <tr>
+                    <th>Harga Setelah Poin</th>
+                    <td class="text-right">Rp. {{ number_format($purchaseData['final_total'], 0, ',', '.') }}</td>
+                </tr>
+            @endif
+
             <tr>
-                <th>Poin Digunakan</th>
-                <td class="text-right">{{ $purchaseData['use_points'] }}</td>
-            </tr>
-            <tr>
-                <th>Harga Setelah Poin</th>
-                <td class="text-right">Rp. {{ number_format($purchaseData['final_total'], 0, ',', '.') }}</td>
-            </tr>
-            <tr>
-                <th>Harga total bayar</th>
+                <th>Total Bayar</th>
                 <td class="text-right">Rp. {{ number_format($purchaseData['total_payment'], 0, ',', '.') }}</td>
             </tr>
             <tr>
@@ -80,7 +84,6 @@
         <p class="text-right">
             {{ \Carbon\Carbon::parse($purchaseData['created_at'])->format('d-m-Y H:i') }} | {{ $purchaseData['user_role'] }}
         </p>
-
 
     </div>
 </body>

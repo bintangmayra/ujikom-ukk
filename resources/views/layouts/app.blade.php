@@ -138,6 +138,7 @@
             <input type="text" name="search" value="{{ request('search') }}" class="form-control border-start-0" placeholder="Cari...">
         </form>
 
+
         <div class="d-flex align-items-center gap-3">
             <div class="dropdown">
                 <a href="#" class="d-flex align-items-center text-decoration-none" id="dropdownUser" data-bs-toggle="dropdown" aria-expanded="false">
