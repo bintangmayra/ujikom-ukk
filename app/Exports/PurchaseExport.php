@@ -3,27 +3,53 @@
 namespace App\Exports;
 
 use App\Models\Purchase;
-use Maatwebsite\Excel\Concerns\FromCollection;
+use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Concerns\WithEvents;
+use Maatwebsite\Excel\Concerns\WithColumnFormatting;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
-class PurchaseExport implements FromCollection, WithHeadings, WithMapping, WithTitle, ShouldAutoSize, WithColumnFormatting, WithEvents
+class PurchaseExport implements
+    FromArray,
+    WithHeadings,
+    WithTitle,
+    ShouldAutoSize,
+    WithEvents,
+    WithColumnFormatting
 {
-    // Fetching the collection of purchase data along with its related models
-    public function collection()
+    public function array(): array
     {
-        return Purchase::with(['member', 'user', 'purchaseDetails.product'])->get();
+        $purchases = Purchase::with(['member', 'user', 'purchaseDetails.product'])->get();
+
+        $rows = [];
+
+        foreach ($purchases as $purchase) {
+            foreach ($purchase->purchaseDetails as $detail) {
+                $rows[] = [
+                    $purchase->id,
+                    optional($purchase->member)->name ?? 'NON-MEMBER',
+                    optional($purchase->member)->no_phone ?? '-',
+                    optional($purchase->member)->poin ?? 0,
+                    $purchase->created_at->format('Y-m-d H:i'),
+                    $purchase->total_price,
+                    optional($detail->product)->name ?? '-',
+                    $detail->quantity,
+                    $detail->price,
+                    $detail->quantity * $detail->price,
+                    optional($purchase->user)->name ?? '-',
+                ];
+            }
+        }
+
+        return $rows;
     }
 
-    // Defining the headings for the exported Excel file
     public function headings(): array
     {
         return [
@@ -32,92 +58,69 @@ class PurchaseExport implements FromCollection, WithHeadings, WithMapping, WithT
             'Nomor HP Pelanggan',
             'Poin Pelanggan',
             'Tanggal Penjualan',
-            'Total Harga',
-            'Produk',
+            'Total Harga Pembelian',
+            'Nama Produk',
+            'Qty',
+            'Harga Produk',
+            'Subtotal',
             'Dibuat Oleh',
         ];
     }
 
-
-    public function map($purchase): array
-    {
-        $rows = [];
-
-        foreach ($purchase->purchaseDetails as $detail) {
-            // Add a new row for each product in the purchase
-            $rows[] = [
-                $purchase->id, // Purchase ID
-                optional($purchase->member)->name ?? 'NON-MEMBER', // Customer Name
-                optional($purchase->member)->no_phone ?? '-', // Customer Phone
-                optional($purchase->member)->poin ?? 0, // Customer Points
-                $purchase->created_at->format('Y-m-d'), // Sale Date
-                $purchase->total_price, // Total Price
-                $detail->product->name . ' (' . number_format($detail->price) . ' x ' . $detail->quantity . ')', // Product with price and quantity
-                optional($purchase->user)->name ?? 'Petugas', // Created by (User)
-            ];
-        }
-
-        return $rows;
-    }
-
-
     public function title(): string
     {
-        return 'Data Penjualan'; // Sheet Title
+        return 'Data Penjualan';
     }
 
-    
     public function columnFormats(): array
     {
         return [
-            'E' => NumberFormat::FORMAT_DATE_YYYYMMDD, // Date format for column E
-            'F' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1, // Format for total price column (F)
+            'F' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1, // Total Harga
+            'I' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1, // Harga Produk
+            'J' => NumberFormat::FORMAT_NUMBER_COMMA_SEPARATED1, // Subtotal
         ];
     }
 
-    // Defining events for after the sheet is created, e.g., for styling and merging cells
-   // Defining events for after the sheet is created, e.g., for styling and merging cells
-public function registerEvents(): array
-{
-    return [
-        AfterSheet::class => function (AfterSheet $event) {
-            $sheet = $event->sheet;
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => function (AfterSheet $event) {
+                /** @var Worksheet $sheet */
+                $sheet = $event->sheet->getDelegate();
+                $highestRow = $sheet->getHighestRow();
+                $highestColumn = $sheet->getHighestColumn();
 
-            // Merge cells A1 to H1 for the title
-            $sheet->mergeCells('A1:H1');
+                // Tambah judul laporan di baris 1
+                $sheet->insertNewRowBefore(1, 1);
+                $sheet->setCellValue('A1', 'Laporan Data Penjualan');
+                $sheet->mergeCells("A1:{$highestColumn}1");
 
-            // Set the title text for the sheet
-            $sheet->setCellValue('A1', 'Laporan Transaksi Penjualan per Produk');
-
-            // Apply styles to the title (bold, font size 16, centered alignment)
-            $sheet->getStyle('A1')->applyFromArray([
-                'font' => [
-                    'bold' => true,
-                    'size' => 16,
-                ],
-                'alignment' => [
-                    'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'vertical' => Alignment::VERTICAL_CENTER,
-                ],
-            ]);
-
-            // Insert an empty row after the title for spacing
-            $sheet->insertNewRowBefore(2, 1);
-
-            // Styling for the heading row (A3:H3)
-            $sheet->getStyle('A3:H3')->applyFromArray([
-                'font' => ['bold' => true],
-                'alignment' => [
-                    'horizontal' => Alignment::HORIZONTAL_CENTER,
-                ],
-                'borders' => [
-                    'allBorders' => [
-                        'borderStyle' => Border::BORDER_THIN,
+                // Format judul
+                $sheet->getStyle('A1')->applyFromArray([
+                    'font' => [
+                        'bold' => true,
+                        'size' => 14,
                     ],
-                ],
-            ]);
-        },
-    ];
-}
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_CENTER,
+                        'vertical' => Alignment::VERTICAL_CENTER,
+                    ],
+                ]);
 
+                // Format border dan alignment seluruh data
+                $sheet->getStyle("A2:{$highestColumn}" . ($highestRow + 1))->applyFromArray([
+                    'borders' => [
+                        'allBorders' => [
+                            'borderStyle' => Border::BORDER_THIN,
+                            'color' => ['argb' => '000000'],
+                        ],
+                    ],
+                    'alignment' => [
+                        'horizontal' => Alignment::HORIZONTAL_CENTER,
+                        'vertical' => Alignment::VERTICAL_CENTER,
+                    ],
+                ]);
+            },
+        ];
+    }
 }

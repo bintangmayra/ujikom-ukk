@@ -7,7 +7,12 @@
     <div>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1">
-                <li class="breadcrumb-item"><a href="/dashboard">Home</a></li>
+                <li class="breadcrumb-item">
+                    <a href="/dashboard">
+                        <i class="fas fa-home me-1"></i> <!-- Ikon rumah -->
+                    </a>
+                </li>
+
                 <li class="breadcrumb-item active" aria-current="page">Penjualan</li>
             </ol>
         </nav>

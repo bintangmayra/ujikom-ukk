@@ -98,39 +98,27 @@ class PurchaseController extends Controller
 
     public function store(Request $request)
     {
-        // Debug: Check the raw request data
-        // dd($request->all());
         $productItems = session('selected_products', []);
-        // dd($productItems);
-        // Clean the total_payment by removing "Rp." and non-numeric characters (except for dots or commas)
-        $cleanTotalPayment = preg_replace('/[^0-9]/', '', $request->total_payment); // Hilangkan semua non-angka
-        $cleanTotalPayment = (int) $cleanTotalPayment; // Konversi ke integer
+
+        $cleanTotalPayment = preg_replace('/[^0-9]/', '', $request->total_payment);
+        $cleanTotalPayment = (int) $cleanTotalPayment;
         $request->merge(['total_payment' => $cleanTotalPayment]);
 
-        // dd($request->total_payment);
-
-        // Periksa apakah 'member_id' dan 'member_name' null atau kosong
         if (
             (is_null($request->input('member_id')) || $request->input('member_id') == '') &&
             (is_null($request->input('member_name')) || $request->input('member_name') == '')
         ) {
-            // Jika kedua member_id dan member_name null atau kosong, lakukan logika berikut
             if ($request->filled('member_phone')) {
                 session([
                     'products_checkout' => $request->products,
                     'total_payment_checkout' => $request->total_payment,
-                    'member_phone_checkout' => $request->member_phone, // Store member phone
+                    'member_phone_checkout' => $request->member_phone,
                     'member_no_checkout' => $request->member_no,
                 ]);
                 return redirect()->route(auth()->user()->role . '.member')->withInput();
             }
         }
 
-        $total_final = $request->total_price - ($request->use_points * 100);
-
-        // dd($total_final);
-
-        // Validate the input
         $request->validate([
             'products' => 'required|array',
             'products.*' => 'exists:products,id',
@@ -141,111 +129,107 @@ class PurchaseController extends Controller
             'member_no' => 'nullable|string',
         ]);
 
-        // Logika untuk member (create member jika perlu)
         $memberId = null;
+        $pointsToUse = 0;
+        $pointValue = 0.01; // 1% dari total harga
+
+        $products = Product::whereIn('id', $request->products)->get();
+        $totalPrice = $products->sum(function ($product) use ($productItems) {
+            $qty = collect($productItems)->firstWhere('product_id', $product->id)['jumlah'] ?? 1;
+            return $product->price * $qty;
+        });
+
         if ($request->status_member === 'member' && $request->filled('member_phone')) {
             $member = Member::where('no_phone', $request->member_phone)->first();
 
             if (!$member) {
-                $newMember = Member::create([
+                $member = Member::create([
                     'name' => $request->member_name ?? 'Nama Tidak Diketahui',
                     'no_phone' => $request->member_phone,
                     'poin' => 0,
                 ]);
-                $memberId = $newMember->id;
-                $member = $newMember;
+            }
+
+            $memberId = $member->id;
+
+            // Hitung maksimum potongan dari poin
+            $maxDiscount = $member->poin * $pointValue;
+
+            // Jika total harga lebih kecil dari potongan, batasi poin yang dipakai
+            if ($totalPrice < $maxDiscount) {
+                $pointsToUse = floor($totalPrice * $pointValue); // Menggunakan poin 1% dari total harga
             } else {
-                $memberId = $member->id;
+                $pointsToUse = $member->poin;
             }
 
-            // Tambahkan logika poin di sini
-            $pointsToAdd = 0;
-            $pointsToSubtract = 0;
+            $discountFromPoints = $pointsToUse * $pointValue;
+            $finalTotal = max(0, $totalPrice - $discountFromPoints); // Harga setelah poin (Rp. 891.000)
 
-            // Jika total_payment lebih dari 100.000 → Tambah 100 poin
-            if ($request->total_payment > 100000) {
-                $pointsToAdd = 100;
-            }
-
-            // Jika use_points diisi → Kurangi 50 poin
-            if ($request->filled('use_points')) {
-                $pointsToSubtract = 50;
-            }
+            // Tambah poin jika belanja (sebelum potongan) lebih dari 100.000
+            $pointsToAdd = $totalPrice > 100000 ? floor($totalPrice * $pointValue) : 0;
 
             // Update poin member
-            $member->poin = max(0, ($member->poin ?? 0) + $pointsToAdd - $pointsToSubtract);
+            $member->poin = max(0, $member->poin + $pointsToAdd - $pointsToUse);
             $member->save();
 
-            // Simpan member_id jika butuh digunakan
             $request->merge(['member_id' => $member->id]);
+        } else {
+            $finalTotal = $totalPrice;
         }
 
-
-        // Ambil data produk
-        $products = Product::whereIn('id', $request->products)->get();
-        $totalPrice = $request->input('total_price');
-        // dd($totalPrice);
+        // Total bayar tetap Rp. 900.000 (tidak dipengaruhi poin)
         $totalPayment = $cleanTotalPayment;
-        $change = $totalPayment - $total_final;
-        // dd($change);
 
-        // Periksa apakah pembayaran mencukupi
+        // Menghitung kembalian berdasarkan total pembayaran yang sudah bersih dari poin
+        $change = $totalPayment - $totalPrice;  // Kembalian dihitung dari harga sebelum poin
+
         if ($change < 0) {
-            return back()->withErrors('Jumlah pembayaran kurang dari total harga!')->withInput();
+            return back()->withErrors('Jumlah pembayaran kurang dari total harga setelah potongan poin!')->withInput();
         }
 
-
-
-        // Simpan data pembelian
+        // Simpan pembelian
         $purchase = Purchase::create([
             'user_id' => auth()->id(),
             'member_id' => $memberId,
             'total_price' => $totalPrice,
-            'total_payment' => $totalPayment,
+            'total_payment' => $cleanTotalPayment,
             'change' => $change,
         ]);
+
+        // Simpan detail pembelian
         foreach ($products as $product) {
-            // Cari kuantitas produk di session
-            $quantity = 0;
-            foreach ($productItems as $item) {
-                if (isset($item['product_id']) && $item['product_id'] == $product->id) {
-                    $quantity = $item['jumlah']; // Ambil kuantitas dari session
-                    break;
-                }
-            }
-        }
+            $quantity = collect($productItems)->firstWhere('product_id', $product->id)['jumlah'] ?? 1;
 
-
-        // dd($request->use_points);
-
-        // Menambahkan produk ke detail pembelian dan mengurangi stok
-        foreach ($products as $product) {
             PurchaseDetail::create([
                 'purchase_id' => $purchase->id,
                 'product_id' => $product->id,
                 'quantity' => $quantity,
                 'price' => $product->price,
             ]);
-            $product->decrement('stock');
+
+            $product->decrement('stock', $quantity);
         }
+
+        // Simpan data ke session untuk invoice
         session([
             'purchase_data' => [
                 'id' => $purchase->id,
                 'member' => $purchase->member,
                 'products' => $purchase->products,
-                'total_price' => $purchase->total_price,
+                'total_price' => $totalPrice,
                 'total_payment' => $cleanTotalPayment,
                 'change' => $change,
-                'use_points' => $request->use_points ?? 0,
-                'final_total' => $total_final, // Asumsi 1 poin = 100
+                'use_points' => $pointsToUse,
+                'final_total' => $finalTotal, // Harga setelah poin, Rp. 891.000
                 'created_at' => $purchase->created_at,
                 'user_role' => $purchase->user->role,
             ]
         ]);
 
-        // Redirect dengan pesan sukses
         return redirect()->route(auth()->user()->role . '.invoice')->with('success', 'Pembelian berhasil disimpan!');
     }
+
+
 
     public function show($id)
     {

@@ -3,10 +3,16 @@
 @section('content')
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="fw-bold">Daftar User</h2>
-    <a href="{{ route('admin.user.create') }}" class="btn btn-primary shadow-sm">
-        <i class="fas fa-plus me-2"></i> Tambah User
-    </a>
+    <div>
+        <a href="{{ route('admin.user.export') }}" class="btn btn-success shadow-sm">
+            <i class="fas fa-file-excel me-2"></i> Download Excel
+        </a>
+        <a href="{{ route('admin.user.create') }}" class="btn btn-primary shadow-sm">
+            <i class="fas fa-plus me-2"></i> Tambah User
+        </a>
+    </div>
 </div>
+
 
 <div class="card shadow-sm">
     <div class="card-body p-4">

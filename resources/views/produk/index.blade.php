@@ -5,22 +5,30 @@
     <div>
         <nav aria-label="breadcrumb">
             <ol class="breadcrumb mb-1">
-                <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">🏠</a></li>
+                <li class="breadcrumb-item">
+                    <a href="/dashboard">
+                        <i class="fas fa-home me-1"></i> <!-- Ikon rumah -->
+                    </a>
+                </li>
                 <li class="breadcrumb-item active" aria-current="page">Produk</li>
             </ol>
         </nav>
         <h4 class="fw-bold">Produk</h4>
     </div>
 </div>
-<div class="d-flex justify-content-between align-items-center mb-0">
-
-<div>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <!-- "Tambah Produk" button placed to the left -->
+    <div>
         @if(Auth::user()->role === 'admin')
-            <a href="{{ route('admin.produk.create') }}" class="btn btn-primary shadow-sm">
+            <a href="{{ route('admin.produk.create') }}" class="btn btn-primary shadow-sm me-2">
                 <i class="fas fa-plus me-2"></i> Tambah Produk
+            </a>
+            <a href="{{ route('admin.produk.export') }}" class="btn btn-success shadow-sm">
+                <i class="fas fa-file-excel me-2"></i> Export Excel
             </a>
         @endif
     </div>
+
 
     <!-- Search Form placed to the right -->
     <form action="{{ url()->current() }}" method="GET" class="d-flex mb-4" style="max-width: 400px;">

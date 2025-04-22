@@ -8,6 +8,10 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\MemberController;
 use Illuminate\Support\Facades\Route;
 
+use App\Exports\UserExport;
+use App\Exports\ProductExport;
+use Maatwebsite\Excel\Facades\Excel;
+
 // Redirect root ke dashboard atau login
 Route::get('/', function () {
     return auth()->check()
@@ -53,6 +57,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     Route::get('/pembelian/{purchase}/download', [PurchaseController::class, 'download'])->name('pembelian.download');
     Route::get('/pembelian/{purchase}', [PurchaseController::class, 'show'])->name('pembelian.show');
+
+    Route::get('/admin/users/export', function() {
+        return Excel::download(new UserExport, 'users.xlsx');
+    })->name('user.export');
+    Route::get('/admin/produk/export', function () {
+        return Excel::download(new ProductExport, 'produk.xlsx');
+    })->name('produk.export');
 });
 
 // ========================

@@ -50,6 +50,8 @@ class MemberController extends Controller
         $user = auth()->user();
         $hasPurchasedBefore = $user->purchases()->exists();
 
+        // dd($total_payment);
+
         return view('pembelian.member', [
             'products' => $productsWithQuantity,
             'hasPurchasedBefore' => $hasPurchasedBefore,

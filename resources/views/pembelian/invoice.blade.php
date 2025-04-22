@@ -36,6 +36,7 @@
             <tbody>
                 @foreach ($purchaseData['products'] as $product)
                     @php
+                        // Ambil data produk dan jumlahnya
                         $selectedProduct = collect($productItems)->firstWhere('product_id', $product->id);
                         $quantity = $selectedProduct['jumlah'] ?? 0;
                         $productPrice = $selectedProduct['product_price'] ?? 0;
@@ -61,7 +62,7 @@
                 @if ($purchaseData['use_points'] > 0)
                     <tr>
                         <th>Poin Digunakan</th>
-                        <td class="text-right">{{ $purchaseData['use_points'] }}</td>
+                        <td class="text-right">{{ $purchaseData['use_points'] }} poin</td>
                     </tr>
                 @endif
 

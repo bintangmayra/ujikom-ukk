@@ -48,12 +48,15 @@
                 <th>Poin Digunakan</th>
                 <td class="text-right">{{ $purchaseData['use_points'] }}</td>
             </tr>
-            <tr>
-                <th>Harga barang</th>
-                <td class="text-right">Rp. {{ number_format($purchaseData['final_total'], 0, ',', '.') }}</td>
-            </tr>
+            @if ($purchaseData['member'])
             <tr>
                 <th>Harga Setelah Poin</th>
+                <td class="text-right">Rp. {{ number_format($purchaseData['final_total'], 0, ',', '.') }}</td>
+            </tr>
+        @endif
+        
+            <tr>
+                <th>Harga Total Bayar</th>
                 <td class="text-right">Rp. {{ number_format($purchaseData['total_payment'], 0, ',', '.') }}</td>
             </tr>
             <tr>
@@ -105,7 +108,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach ($purchaseData['products'] as $product)
+                                @foreach ($purchaseData['products'] as $product)    
                                     @php
                                         $selectedProduct = collect($productItems)->firstWhere('product_id', $product->id);
                                         $quantity = $selectedProduct ? $selectedProduct['jumlah'] : 0;

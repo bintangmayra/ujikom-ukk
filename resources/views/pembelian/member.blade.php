@@ -20,6 +20,9 @@
     $total_price = $products->sum(function($product) {
         return $product->price * $product->jumlah;
     });
+
+    // Ambil data poin yang tersedia dari memberData
+    $availablePoints = $memberData ? $memberData->poin : 0;
     @endphp
 
     <form action="{{ route(auth()->user()->role . '.pembelian.store') }}" method="POST">
@@ -45,9 +48,10 @@
                 </ul>
             </div>
 
+            {{-- Kanan --}}
             <div class="col-md-6">
                 <input type="hidden" name="status_member" value="member">
-                <div id="memberDetail" style="">
+                <div id="memberDetail">
                     <div class="mb-3">
                         <label for="member_phone" class="form-label">No Telepon</label>
                         <input type="text" id="member_phone" name="member_phone" class="form-control" placeholder="No Telepon" value="{{$memberPhone}}">
@@ -59,10 +63,16 @@
                     </div>
 
                     @if($memberData && $memberData->poin)
-                    <div id="usePointsSection" class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="use_points" name="use_points" value="50">
-                        <label class="form-check-label" for="use_points">Gunakan Poin Member</label>
+                    <div id="usePointsSection" class="mb-3">
+                        <label for="use_points" class="form-label">Apakah Anda Ingin Menggunakan Poin?</label>
+
+                        {{-- Tampilkan checkbox untuk memilih apakah member ingin menggunakan poin atau tidak --}}
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" name="use_points" value="1" id="use_points" {{ $availablePoints > 0 ? '' : 'disabled' }}>
+                            <label class="form-check-label" for="use_points">Gunakan Poin (Anda memiliki {{ $availablePoints }} poin)</label>
+                        </div>
                     </div>
+
                     @else
                     <div id="usePointsSection" class="alert alert-info">
                         Anda belum dapat menggunakan poin karena ini adalah pembelian pertama.
@@ -70,7 +80,6 @@
                     @endif
 
                     <input type="hidden" name="total_payment" id="total_payment" value="{{ $total_payment }}">
-
                 </div>
 
                 <input type="hidden" name="member_id" id="member_id">
@@ -86,10 +95,6 @@
 <script>
   document.addEventListener('DOMContentLoaded', function () {
         const totalInput = document.getElementById('total_payment');
-
-        // if (totalInput) {
-        //     totalInput.value = "{{ $total_payment }}"; // Set nilai awal total pembayaran
-        // }
 
         // Format Rupiah otomatis
         totalInput.addEventListener('input', function () {
@@ -108,6 +113,7 @@
             return prefix + rupiah;
         }
     });
+
     document.querySelector('form').addEventListener('submit', function (e) {
         const totalInput = document.getElementById('total_payment');
         if (totalInput) {
